@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Executive Performance Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f1a3d, #1a2a6c);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+        
+        .dashboard {
+            width: 1280px;
+            height: 720px;
+            background: rgba(25, 32, 58, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            display: grid;
+            grid-template-rows: 90px 1fr 65px;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .dashboard-header {
+            background: linear-gradient(90deg, rgba(26, 42, 108, 0.9), rgba(42, 82, 152, 0.9));
+            padding: 12px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            position: relative;
+        }
+        
+        .refresh-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #a2c0ff;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            opacity: 0.7;
+        }
+        
+        .header-left h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(to right, #ffffff, #c1d3ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 0.5px;
+        }
+        
+        .header-left p {
+            font-size: 15px;
+            color: #c1d3ff;
+        }
+        
+        .header-stats {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .stat-box {
+            text-align: center;
+            min-width: 90px;
+            position: relative;
+        }
+        
+        .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: white;
+            transition: all 0.5s ease;
+        }
+        
+        .stat-label {
+            font-size: 13px;
+            color: #a2c0ff;
+        }
+        
+        .dashboard-content {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            padding: 20px;
+            gap: 20px;
+            height: 100%;
+        }
+        
+        .left-panel {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
+            height: 100%;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+        
+        .metric-card {
+            background: rgba(40, 50, 90, 0.7);
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        .metric-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+        }
+        
+        .metric-card:nth-child(1)::before { background: linear-gradient(90deg, #4a7bff, #00c6ff); }
+        .metric-card:nth-child(2)::before { background: linear-gradient(90deg, #34a853, #00c6ff); }
+        .metric-card:nth-child(3)::before { background: linear-gradient(90deg, #ffcc00, #ff5252); }
+        .metric-card:nth-child(4)::before { background: linear-gradient(90deg, #ff6bff, #00e5ff); }
+        .metric-card:nth-child(5)::before { background: linear-gradient(90deg, #00c6ff, #4a7bff); }
+        .metric-card:nth-child(6)::before { background: linear-gradient(90deg, #ff5252, #ffcc00); }
+        
+        .metric-value {
+            font-size: 26px;
+            font-weight: 800;
+            margin: 8px 0;
+            color: white;
+            transition: all 0.5s ease;
+        }
+        
+        .metric-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #a2c0ff;
+        }
+        
+        .metric-trend {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #34a853;
+            margin-top: 4px;
+        }
+        
+        .metric-trend.down {
+            color: #ff5252;
+        }
+        
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            height: 100%;
+        }
+        
+        .chart-container {
+            background: rgba(40, 50, 90, 0.7);
+            border-radius: 10px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .chart-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #a2c0ff;
+        }
+        
+        .chart-wrapper {
+            flex: 1;
+            position: relative;
+            min-height: 180px;
+        }
+        
+        .right-panel {
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 20px;
+            height: 100%;
+        }
+        
+        .performance-container {
+            background: rgba(40, 50, 90, 0.7);
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #a2c0ff;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .section-controls {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .control-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 5px;
+            color: #a2c0ff;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .performance-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            height: 100%;
+        }
+        
+        .performers-section {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .performer-card {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            margin: 4px 0;
+            border-radius: 8px;
+            background: linear-gradient(90deg, rgba(74, 123, 255, 0.15), rgba(0, 198, 255, 0.1));
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .performer-card:hover {
+            transform: translateX(5px);
+        }
+        
+        .performer-card.support {
+            background: linear-gradient(90deg, rgba(255, 59, 48, 0.15), rgba(255, 149, 0, 0.1));
+        }
+        
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4a7bff, #00c6ff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            margin-right: 12px;
+            flex-shrink: 0;
+            font-size: 14px;
+        }
+        
+        .performer-card.support .avatar {
+            background: linear-gradient(135deg, #ff5252, #ffcc00);
+        }
+        
+        .performer-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .performer-name {
+            font-weight: 600;
+            color: white;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .performer-role {
+            font-size: 12px;
+            color: #b0c4ff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .performer-score {
+            font-weight: 700;
+            font-size: 18px;
+            color: white;
+            margin-left: 8px;
+            transition: all 0.5s ease;
+        }
+        
+        .insights-container {
+            background: rgba(40, 50, 90, 0.7);
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .insight-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .insight-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .insight-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        
+        .insight-content h4 {
+            font-size: 14px;
+            margin-bottom: 4px;
+            color: white;
+        }
+        
+        .insight-content p {
+            font-size: 13px;
+            color: #b0c4ff;
+            line-height: 1.4;
+        }
+        
+        .dashboard-footer {
+            background: linear-gradient(90deg, rgba(26, 42, 108, 0.9), rgba(42, 82, 152, 0.9));
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 25px;
+            font-size: 13px;
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        
+        .footer-note {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #c1d3ff;
+        }
+        
+        .highlight {
+            background: linear-gradient(90deg, #ffcc00, #ff5252);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+            color: #0a1228;
+            font-size: 12px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 204, 0, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(255, 204, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 204, 0, 0); }
+        }
+        
+        .chartjs-tooltip {
+            background: rgba(40, 50, 90, 0.95) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 8px !important;
+            padding: 10px !important;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3) !important;
+            font-size: 13px !important;
+        }
+        
+        .chartjs-tooltip .title {
+            color: #a2c0ff !important;
+            font-weight: 600 !important;
+            margin-bottom: 5px !important;
+        }
+        
+        .chartjs-tooltip .label {
+            color: white !important;
+        }
+        
+        .chartjs-tooltip .value {
+            color: white !important;
+            font-weight: 600 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="dashboard-header">
+            <div class="refresh-indicator">
+                <i class="fas fa-sync-alt"></i>
+                <span id="last-updated">Updated: Just now</span>
+            </div>
+            <div class="header-left">
+                <h1>Dynamic Performance Dashboard</h1>
+                <p>July 2025 Performance Summary - <span id="time-indicator">Real-time</span></p>
+            </div>
+            <div class="header-stats">
+                <div class="stat-box">
+                    <div class="stat-value" id="overall-stat">92.4%</div>
+                    <div class="stat-label">Overall</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="productivity-stat">94.7%</div>
+                    <div class="stat-label">Productivity</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="efficiency-stat">87.3%</div>
+                    <div class="stat-label">Efficiency</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="quality-stat">96.8%</div>
+                    <div class="stat-label">Quality</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="dashboard-content">
+            <div class="left-panel">
+                <div class="metrics-grid">
+                    <div class="metric-card" data-metric="productivity">
+                        <div class="metric-title">Productivity</div>
+                        <div class="metric-value" id="productivity-value">94.7%</div>
+                        <div class="metric-trend" id="productivity-trend">
+                            <i class="fas fa-arrow-up"></i> <span>3.2%</span> from last month
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card" data-metric="efficiency">
+                        <div class="metric-title">Efficiency</div>
+                        <div class="metric-value" id="efficiency-value">87.3%</div>
+                        <div class="metric-trend" id="efficiency-trend">
+                            <i class="fas fa-arrow-up"></i> <span>5.1%</span> from last month
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card" data-metric="quality">
+                        <div class="metric-title">Quality</div>
+                        <div class="metric-value" id="quality-value">96.8%</div>
+                        <div class="metric-trend" id="quality-trend">
+                            <i class="fas fa-arrow-up"></i> <span>1.7%</span> from last month
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card" data-metric="commitment">
+                        <div class="metric-title">Commitment</div>
+                        <div class="metric-value" id="commitment-value">88.5%</div>
+                        <div class="metric-trend" id="commitment-trend">
+                            <i class="fas fa-arrow-up"></i> <span>2.8%</span> from last month
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card" data-metric="knowledge">
+                        <div class="metric-title">Knowledge</div>
+                        <div class="metric-value" id="knowledge-value">91.2%</div>
+                        <div class="metric-trend" id="knowledge-trend">
+                            <i class="fas fa-arrow-up"></i> <span>4.1%</span> from last month
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card" data-metric="compliance">
+                        <div class="metric-title">Compliance</div>
+                        <div class="metric-value" id="compliance-value">98.2%</div>
+                        <div class="metric-trend" id="compliance-trend">
+                            <i class="fas fa-arrow-up"></i> <span>2.3%</span> from last month
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="charts-container">
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <div class="chart-title">Performance Distribution</div>
+                            <button class="control-btn" id="dist-refresh">
+                                <i class="fas fa-redo"></i>
+                            </button>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <div class="chart-title">Performance Trends</div>
+                            <button class="control-btn" id="trend-refresh">
+                                <i class="fas fa-redo"></i>
+                            </button>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="right-panel">
+                <div class="performance-container">
+                    <div class="section-title">
+                        <span>Employee Performance</span>
+                        <div class="section-controls">
+                            <button class="control-btn" id="prev-employees">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button class="control-btn" id="next-employees">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="performance-grid">
+                        <div class="performers-section">
+                            <div class="section-title" style="font-size: 16px; color: #ffcc00; margin-bottom: 8px;">
+                                <i class="fas fa-crown"></i> Top Performers
+                            </div>
+                            <div class="performer-card" data-id="10">
+                                <div class="avatar">E10</div>
+                                <div class="performer-info">
+                                    <div class="performer-name">Employee10</div>
+                                    <div class="performer-role">Data Entry Specialist</div>
+                                </div>
+                                <div class="performer-score">100%</div>
+                            </div>
+                            <div class="performer-card" data-id="4">
+                                <div class="avatar">E4</div>
+                                <div class="performer-info">
+                                    <div class="performer-name">Employee4</div>
+                                    <div class="performer-role">Data Entry</div>
+                                </div>
+                                <div class="performer-score">99.9%</div>
+                            </div>
+                            <div class="performer-card" data-id="8">
+                                <div class="avatar">E8</div>
+                                <div class="performer-info">
+                                    <div class="performer-name">Employee8</div>
+                                    <div class="performer-role">Report Generation</div>
+                                </div>
+                                <div class="performer-score">99.4%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="performers-section">
+                            <div class="section-title" style="font-size: 16px; color: #ff5252; margin-bottom: 8px;">
+                                <i class="fas fa-exclamation-triangle"></i> Needs Support
+                            </div>
+                            <div class="performer-card support" data-id="7">
+                                <div class="avatar">E7</div>
+                                <div class="performer-info">
+                                    <div class="performer-name">Employee7</div>
+                                    <div class="performer-role">Data Entry</div>
+                                </div>
+                                <div class="performer-score">78.3%</div>
+                            </div>
+                            <div class="performer-card support" data-id="11">
+                                <div class="avatar">E11</div>
+                                <div class="performer-info">
+                                    <div class="performer-name">Employee11</div>
+                                    <div class="performer-role">Data Entry</div>
+                                </div>
+                                <div class="performer-score">89.2%</div>
+                            </div>
+                            <div class="performer-card support" data-id="6">
+                                <div class="avatar">E6</div>
+                                <div class="performer-info">
+                                    <div class="performer-name">Employee6</div>
+                                    <div class="performer-role">Data Entry</div>
+                                </div>
+                                <div class="performer-score">89.5%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="insights-container">
+                    <div class="section-title">
+                        <span>Key Insights</span>
+                        <div class="section-controls">
+                            <button class="control-btn" id="prev-insight">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button class="control-btn" id="next-insight">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="insight-item" data-id="1">
+                        <div class="insight-icon" style="color: #ffcc00;">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        <div class="insight-content">
+                            <h4>Top Performers Excellence</h4>
+                            <p>Employee10 achieved perfect scores across all metrics. Employee4 and Employee8 also exceeded expectations.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="insight-item" data-id="2">
+                        <div class="insight-icon" style="color: #ff5252;">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <div class="insight-content">
+                            <h4>Employee Requiring Support</h4>
+                            <p>Employee7 (78.3%) shows low commitment (72%) and knowledge (75%) scores. Needs immediate coaching.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="insight-item" data-id="3">
+                        <div class="insight-icon" style="color: #00c6ff;">
+                            <i class="fas fa-lightbulb"></i>
+                        </div>
+                        <div class="insight-content">
+                            <h4>Recommendation</h4>
+                            <p>Focus coaching on Employee7 and implement knowledge development programs. Pair with top performers.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="dashboard-footer">
+            <div class="footer-note">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Data as of <span id="current-date">July 16, 2025</span></span>
+            </div>
+            <div class="footer-note">
+                <i class="fas fa-user-tie"></i>
+                <span>Prepared for Executive Review</span>
+            </div>
+            <div class="footer-note">
+                <i class="fas fa-chart-line"></i>
+                <span>Overall Trend: <span class="highlight">+4.1%</span> from last month</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data and state management
+        const dashboardData = {
+            metrics: {
+                productivity: { value: 94.7, trend: 3.2 },
+                efficiency: { value: 87.3, trend: 5.1 },
+                quality: { value: 96.8, trend: 1.7 },
+                commitment: { value: 88.5, trend: 2.8 },
+                knowledge: { value: 91.2, trend: 4.1 },
+                compliance: { value: 98.2, trend: 2.3 }
+            },
+            employees: [
+                { id: '10', name: 'Employee10', role: 'Data Entry Specialist', score: 100, topPerformer: true },
+                { id: '4', name: 'Employee4', role: 'Data Entry', score: 99.9, topPerformer: true },
+                { id: '8', name: 'Employee8', role: 'Report Generation', score: 99.4, topPerformer: true },
+                { id: '5', name: 'Employee5', role: 'Quality Control', score: 96.8 },
+                { id: '1', name: 'Employee1', role: 'Customer Support', score: 96.2 },
+                { id: '3', name: 'Employee3', role: 'Data Analysis', score: 92.6 },
+                { id: '9', name: 'Employee9', role: 'Technical Support', score: 91.9 },
+                { id: '2', name: 'Employee2', role: 'Report Generation', score: 89.7 },
+                { id: '6', name: 'Employee6', role: 'Data Entry', score: 89.5, needsSupport: true },
+                { id: '11', name: 'Employee11', role: 'Data Entry', score: 89.2, needsSupport: true },
+                { id: '7', name: 'Employee7', role: 'Data Entry', score: 78.3, needsSupport: true }
+            ],
+            insights: [
+                {
+                    id: 1,
+                    icon: 'crown',
+                    color: '#ffcc00',
+                    title: 'Top Performers Excellence',
+                    content: 'Employee10 achieved perfect scores across all metrics. Employee4 and Employee8 also exceeded expectations.',
+                },
+                {
+                    id: 2,
+                    icon: 'exclamation-circle',
+                    color: '#ff5252',
+                    title: 'Employee Requiring Support',
+                    content: 'Employee7 (78.3%) shows low commitment (72%) and knowledge (75%) scores. Needs immediate coaching.',
+                },
+                {
+                    id: 3,
+                    icon: 'lightbulb',
+                    color: '#00c6ff',
+                    title: 'Recommendation',
+                    content: 'Focus coaching on Employee7 and implement knowledge development programs. Pair with top performers.',
+                },
+                {
+                    id: 4,
+                    icon: 'robot',
+                    color: '#4a7bff',
+                    title: 'Automation Impact',
+                    content: 'High automation employees show 22% better efficiency and 15% higher knowledge retention.',
+                },
+                {
+                    id: 5,
+                    icon: 'balance-scale',
+                    color: '#00c6ff',
+                    title: 'Knowledge-Commitment Correlation',
+                    content: 'Analysis shows strong correlation (r=0.82) between professional knowledge scores and commitment levels.',
+                }
+            ],
+            currentDate: new Date(),
+            lastUpdated: new Date(),
+            currentInsightIndex: 0,
+            currentEmployeeView: 0
+        };
+        
+        // Initialize charts
+        let performanceChart, trendChart;
+        
+        // DOM elements
+        const dom = {
+            overallStat: document.getElementById('overall-stat'),
+            productivityStat: document.getElementById('productivity-stat'),
+            efficiencyStat: document.getElementById('efficiency-stat'),
+            qualityStat: document.getElementById('quality-stat'),
+            lastUpdated: document.getElementById('last-updated'),
+            timeIndicator: document.getElementById('time-indicator'),
+            currentDate: document.getElementById('current-date')
+        };
+        
+        // Initialize dashboard
+        function initDashboard() {
+            updateMetrics();
+            updateHeaderStats();
+            updateDateInfo();
+            initCharts();
+            setupEventListeners();
+            startDataUpdates();
+        }
+        
+        // Update all metrics
+        function updateMetrics() {
+            for (const metric in dashboardData.metrics) {
+                const value = dashboardData.metrics[metric].value;
+                const trend = dashboardData.metrics[metric].trend;
+                
+                document.getElementById(`${metric}-value`).textContent = `${value.toFixed(1)}%`;
+                
+                const trendElement = document.getElementById(`${metric}-trend`);
+                trendElement.innerHTML = `<i class="fas fa-arrow-${trend >= 0 ? 'up' : 'down'}"></i> <span>${Math.abs(trend).toFixed(1)}%</span> from last month`;
+                trendElement.className = `metric-trend ${trend >= 0 ? '' : 'down'}`;
+            }
+            
+            // Calculate overall performance
+            const overall = Object.values(dashboardData.metrics)
+                .reduce((sum, metric) => sum + metric.value, 0) / 6;
+            dom.overallStat.textContent = `${overall.toFixed(1)}%`;
+        }
+        
+        // Update header stats
+        function updateHeaderStats() {
+            dom.productivityStat.textContent = `${dashboardData.metrics.productivity.value.toFixed(1)}%`;
+            dom.efficiencyStat.textContent = `${dashboardData.metrics.efficiency.value.toFixed(1)}%`;
+            dom.qualityStat.textContent = `${dashboardData.metrics.quality.value.toFixed(1)}%`;
+        }
+        
+        // Update date information
+        function updateDateInfo() {
+            const now = new Date();
+            dom.lastUpdated.textContent = `Updated: ${formatTime(now)}`;
+            dom.timeIndicator.textContent = now.getHours() >= 9 && now.getHours() < 17 ? 
+                'Real-time (Business Hours)' : 'Real-time';
+            
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            dom.currentDate.textContent = now.toLocaleDateString('en-US', options);
+        }
+        
+        // Format time for display
+        function formatTime(date) {
+            return date.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+        
+        // Initialize charts
+        function initCharts() {
+            // Performance Distribution Chart
+            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+            performanceChart = new Chart(performanceCtx, {
+                type: 'bar',
+                data: getPerformanceChartData(),
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Score: ${context.parsed.y}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: { 
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                drawTicks: false
+                            },
+                            ticks: {
+                                color: '#b0c4ff',
+                                callback: function(value) { return value + '%'; },
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { 
+                                color: '#b0c4ff',
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+            
+            // Performance Trend Chart
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            trendChart = new Chart(trendCtx, {
+                type: 'line',
+                data: getTrendChartData(),
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { 
+                                color: '#b0c4ff',
+                                boxWidth: 12,
+                                padding: 10,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 75,
+                            max: 100,
+                            grid: { 
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                drawTicks: false
+                            },
+                            ticks: {
+                                color: '#b0c4ff',
+                                callback: function(value) { return value + '%'; },
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        x: {
+                            grid: { 
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                drawTicks: false
+                            },
+                            ticks: { 
+                                color: '#b0c4ff',
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+        }
+        
+        // Get data for performance chart
+        function getPerformanceChartData() {
+            // Sort employees by score
+            const sortedEmployees = [...dashboardData.employees].sort((a, b) => b.score - a.score);
+            
+            return {
+                labels: sortedEmployees.map(e => `E${e.id}`),
+                datasets: [{
+                    label: 'Overall Score',
+                    data: sortedEmployees.map(e => e.score),
+                    backgroundColor: sortedEmployees.map(e => {
+                        if (e.topPerformer) return '#34a853';
+                        if (e.score >= 95) return '#4a7bff';
+                        if (e.score >= 90) return '#ffcc00';
+                        return '#ff5252';
+                    }),
+                    borderWidth: 0,
+                    borderRadius: 6,
+                    barPercentage: 0.7,
+                }]
+            };
+        }
+        
+        // Get data for trend chart
+        function getTrendChartData() {
+            const metrics = Object.keys(dashboardData.metrics);
+            const currentMonth = metrics.map(metric => dashboardData.metrics[metric].value);
+            
+            // Create previous month data by slightly modifying current data
+            const previousMonth = currentMonth.map(value => {
+                const change = (Math.random() - 0.5) * 3;
+                return Math.max(75, Math.min(100, value - change));
+            });
+            
+            return {
+                labels: metrics.map(m => m.charAt(0).toUpperCase() + m.slice(1)),
+                datasets: [
+                    {
+                        label: 'Current Month',
+                        data: currentMonth,
+                        borderColor: '#4a7bff',
+                        backgroundColor: 'rgba(74, 123, 255, 0.1)',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#4a7bff',
+                        pointRadius: 4,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Previous Month',
+                        data: previousMonth,
+                        borderColor: '#00c6ff',
+                        backgroundColor: 'rgba(0, 198, 255, 0.1)',
+                        borderWidth: 3,
+                        borderDash: [4, 4],
+                        pointBackgroundColor: '#00c6ff',
+                        pointRadius: 4,
+                        fill: true,
+                        tension: 0.3
+                    }
+                ]
+            };
+        }
+        
+        // Update charts with new data
+        function updateCharts() {
+            performanceChart.data = getPerformanceChartData();
+            performanceChart.update();
+            
+            trendChart.data = getTrendChartData();
+            trendChart.update();
+        }
+        
+        // Set up event listeners
+        function setupEventListeners() {
+            // Refresh buttons
+            document.getElementById('dist-refresh').addEventListener('click', () => {
+                updatePerformanceChart();
+            });
+            
+            document.getElementById('trend-refresh').addEventListener('click', () => {
+                updateTrendChart();
+            });
+            
+            // Employee navigation
+            document.getElementById('prev-employees').addEventListener('click', () => {
+                dashboardData.currentEmployeeView = Math.max(0, dashboardData.currentEmployeeView - 1);
+                updateEmployeeDisplay();
+            });
+            
+            document.getElementById('next-employees').addEventListener('click', () => {
+                dashboardData.currentEmployeeView = Math.min(2, dashboardData.currentEmployeeView + 1);
+                updateEmployeeDisplay();
+            });
+            
+            // Insight navigation
+            document.getElementById('prev-insight').addEventListener('click', () => {
+                dashboardData.currentInsightIndex = 
+                    (dashboardData.currentInsightIndex - 1 + dashboardData.insights.length) % dashboardData.insights.length;
+                updateInsights();
+            });
+            
+            document.getElementById('next-insight').addEventListener('click', () => {
+                dashboardData.currentInsightIndex = 
+                    (dashboardData.currentInsightIndex + 1) % dashboardData.insights.length;
+                updateInsights();
+            });
+            
+            // Metric card clicks
+            document.querySelectorAll('.metric-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const metric = this.getAttribute('data-metric');
+                    highlightMetric(metric);
+                });
+            });
+        }
+        
+        // Highlight a metric
+        function highlightMetric(metric) {
+            // Reset all metrics
+            document.querySelectorAll('.metric-card').forEach(card => {
+                card.style.transform = 'scale(1)';
+                card.style.boxShadow = '0 5px 15px rgba(0, 0, 0, 0.3)';
+            });
+            
+            // Highlight selected metric
+            const card = document.querySelector(`.metric-card[data-metric="${metric}"]`);
+            card.style.transform = 'scale(1.03)';
+            card.style.boxShadow = '0 8px 20px rgba(74, 123, 255, 0.4)';
+            
+            // Show in header
+            document.getElementById(`${metric}-stat`).classList.add('highlight');
+            setTimeout(() => {
+                document.getElementById(`${metric}-stat`).classList.remove('highlight');
+            }, 2000);
+        }
+        
+        // Update employee display
+        function updateEmployeeDisplay() {
+            // In a real app, this would fetch different data
+            // For demo, we'll just rotate the employee scores
+            const topPerformers = dashboardData.employees.filter(e => e.topPerformer);
+            const needsSupport = dashboardData.employees.filter(e => e.needsSupport);
+            
+            // Rotate scores slightly
+            topPerformers.forEach(e => {
+                e.score = Math.min(100, e.score + (Math.random() - 0.4));
+            });
+            
+            needsSupport.forEach(e => {
+                e.score = Math.max(60, e.score + (Math.random() - 0.3));
+            });
+            
+            // Update DOM
+            const topCards = document.querySelectorAll('.performers-section:first-child .performer-card');
+            topCards.forEach((card, i) => {
+                const employee = topPerformers[i];
+                card.querySelector('.performer-name').textContent = employee.name;
+                card.querySelector('.performer-role').textContent = employee.role;
+                card.querySelector('.performer-score').textContent = `${employee.score.toFixed(1)}%`;
+            });
+            
+            const supportCards = document.querySelectorAll('.performers-section:last-child .performer-card');
+            supportCards.forEach((card, i) => {
+                const employee = needsSupport[i];
+                card.querySelector('.performer-name').textContent = employee.name;
+                card.querySelector('.performer-role').textContent = employee.role;
+                card.querySelector('.performer-score').textContent = `${employee.score.toFixed(1)}%`;
+            });
+        }
+        
+        // Update insights
+        function updateInsights() {
+            const insights = dashboardData.insights;
+            const startIndex = dashboardData.currentInsightIndex;
+            
+            const insightItems = document.querySelectorAll('.insight-item');
+            insightItems.forEach((item, i) => {
+                const insight = insights[(startIndex + i) % insights.length];
+                const icon = item.querySelector('.insight-icon');
+                const content = item.querySelector('.insight-content');
+                
+                icon.innerHTML = `<i class="fas fa-${insight.icon}"></i>`;
+                icon.style.color = insight.color;
+                content.querySelector('h4').textContent = insight.title;
+                content.querySelector('p').textContent = insight.content;
+                item.setAttribute('data-id', insight.id);
+            });
+        }
+        
+        // Update performance chart
+        function updatePerformanceChart() {
+            // Simulate data update
+            dashboardData.employees.forEach(emp => {
+                const change = (Math.random() - 0.5) * 2;
+                emp.score = Math.max(60, Math.min(100, emp.score + change));
+            });
+            
+            performanceChart.data = getPerformanceChartData();
+            performanceChart.update();
+            
+            // Update last updated time
+            dashboardData.lastUpdated = new Date();
+            updateDateInfo();
+        }
+        
+        // Update trend chart
+        function updateTrendChart() {
+            // Simulate data update
+            for (const metric in dashboardData.metrics) {
+                const change = (Math.random() - 0.5) * 1.5;
+                dashboardData.metrics[metric].value = Math.max(75, Math.min(100, 
+                    dashboardData.metrics[metric].value + change));
+            }
+            
+            trendChart.data = getTrendChartData();
+            trendChart.update();
+            
+            // Update metrics display
+            updateMetrics();
+            updateHeaderStats();
+            
+            // Update last updated time
+            dashboardData.lastUpdated = new Date();
+            updateDateInfo();
+        }
+        
+        // Start data updates
+        function startDataUpdates() {
+            // Update metrics every 30 seconds
+            setInterval(() => {
+                for (const metric in dashboardData.metrics) {
+                    const change = (Math.random() - 0.5) * 0.5;
+                    dashboardData.metrics[metric].value = Math.max(75, Math.min(100, 
+                        dashboardData.metrics[metric].value + change));
+                }
+                updateMetrics();
+                updateHeaderStats();
+                
+                // Update last updated time
+                dashboardData.lastUpdated = new Date();
+                updateDateInfo();
+            }, 30000);
+            
+            // Rotate insights every 20 seconds
+            setInterval(() => {
+                dashboardData.currentInsightIndex = 
+                    (dashboardData.currentInsightIndex + 1) % dashboardData.insights.length;
+                updateInsights();
+            }, 20000);
+            
+            // Update employee scores every 45 seconds
+            setInterval(() => {
+                updateEmployeeDisplay();
+            }, 45000);
+            
+            // Update time indicator every minute
+            setInterval(updateDateInfo, 60000);
+        }
+        
+        // Initialize dashboard when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initDashboard);
+    </script>
+</body>
+</html>
